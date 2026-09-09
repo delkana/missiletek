@@ -3,6 +3,7 @@ import "./style.css";
 
 type Trajectory = "standard" | "high" | "depressed";
 type Kind = "warhead" | "decoy";
+type GridFootprint = { gx:number; gz:number; width:number; depth:number };
 
 type Missile = {
   id:number; kind:Kind; mesh:BABYLON.Mesh; start:BABYLON.Vector3; target:BABYLON.Vector3;
@@ -37,28 +38,80 @@ const glowMat=mat("tech",new BABYLON.Color3(.15,.25,.31),new BABYLON.Color3(.08,
 const hostileMat=mat("hostile",new BABYLON.Color3(.44,.43,.40),new BABYLON.Color3(.24,.055,.02));
 const decoyMat=mat("decoy",new BABYLON.Color3(.34,.34,.34),new BABYLON.Color3(.10,.055,.015));
 const samMat=mat("sam",new BABYLON.Color3(.8,.85,.86),new BABYLON.Color3(.09,.12,.12));
+const padMat=mat("foundation",new BABYLON.Color3(.12,.17,.18),new BABYLON.Color3(.025,.055,.06));
+
+const GRID_SIZE=4;
+const BUILD_SURFACE_Y=3.08;
+const BUILD_BASE_Y=3.18;
+const gridOccupancy=new Map<string,string>();
+function gridKey(gx:number,gz:number){return `${gx}:${gz}`;}
+function reserveGrid(name:string,fp:GridFootprint){for(let x=fp.gx;x<fp.gx+fp.width;x++)for(let z=fp.gz;z<fp.gz+fp.depth;z++)gridOccupancy.set(gridKey(x,z),name);}
+function footprintCenter(fp:GridFootprint,y:number){return new BABYLON.Vector3((fp.gx+fp.width/2)*GRID_SIZE,y,(fp.gz+fp.depth/2)*GRID_SIZE);}
+function footprintSize(cells:number){return cells*GRID_SIZE-.42;}
+function foundation(name:string,fp:GridFootprint){const pad=BABYLON.MeshBuilder.CreateBox(name+"-pad",{width:footprintSize(fp.width),height:.14,depth:footprintSize(fp.depth)},scene);pad.position.copyFrom(footprintCenter(fp,BUILD_SURFACE_Y));pad.material=padMat;pad.isPickable=false;return pad;}
+function gridBuilding(name:string,fp:GridFootprint,height:number,material:BABYLON.Material){foundation(name,fp);const b=BABYLON.MeshBuilder.CreateBox(name,{width:footprintSize(fp.width),height,depth:footprintSize(fp.depth)},scene);b.position.copyFrom(footprintCenter(fp,BUILD_BASE_Y+height/2));b.material=material;reserveGrid(name,fp);return b;}
+function drawWorldGrid(){
+  const minor:BABYLON.Vector3[][]=[],major:BABYLON.Vector3[][]=[];
+  for(let x=-120;x<=120;x+=GRID_SIZE){const line=[new BABYLON.Vector3(x,-1.72,-76),new BABYLON.Vector3(x,-1.72,76)];(Math.abs(Math.round(x/GRID_SIZE))%5===0?major:minor).push(line);}
+  for(let z=-76;z<=76;z+=GRID_SIZE){const line=[new BABYLON.Vector3(-120,-1.72,z),new BABYLON.Vector3(120,-1.72,z)];(Math.abs(Math.round(z/GRID_SIZE))%5===0?major:minor).push(line);}
+  const a=BABYLON.MeshBuilder.CreateLineSystem("world-grid",{lines:minor},scene);a.color.set(.20,.34,.40);a.alpha=.18;a.isPickable=false;
+  const b=BABYLON.MeshBuilder.CreateLineSystem("world-grid-major",{lines:major},scene);b.color.set(.29,.48,.56);b.alpha=.29;b.isPickable=false;
+}
+function drawIslandGrid(name:string,cx:number,cz:number,r:number){
+  const radius=r*.86,lines:BABYLON.Vector3[][]=[];
+  const minX=Math.ceil((cx-radius)/GRID_SIZE)*GRID_SIZE,maxX=Math.floor((cx+radius)/GRID_SIZE)*GRID_SIZE;
+  const minZ=Math.ceil((cz-radius)/GRID_SIZE)*GRID_SIZE,maxZ=Math.floor((cz+radius)/GRID_SIZE)*GRID_SIZE;
+  for(let x=minX;x<=maxX;x+=GRID_SIZE){const dx=x-cx,half=Math.sqrt(Math.max(0,radius*radius-dx*dx));lines.push([new BABYLON.Vector3(x,3.055,cz-half),new BABYLON.Vector3(x,3.055,cz+half)]);}
+  for(let z=minZ;z<=maxZ;z+=GRID_SIZE){const dz=z-cz,half=Math.sqrt(Math.max(0,radius*radius-dz*dz));lines.push([new BABYLON.Vector3(cx-half,3.055,z),new BABYLON.Vector3(cx+half,3.055,z)]);}
+  const grid=BABYLON.MeshBuilder.CreateLineSystem(name+"-build-grid",{lines},scene);grid.color.set(.48,.64,.62);grid.alpha=.52;grid.isPickable=false;
+}
 
 const water=BABYLON.MeshBuilder.CreateGround("water",{width:240,height:150},scene); water.position.y=-1.8; water.material=waterMat;
+drawWorldGrid();
 function island(name:string,x:number,r:number,seed:number){
   const root=new BABYLON.TransformNode(name,scene);
   const rock=BABYLON.MeshBuilder.CreateCylinder(name+"-rock",{diameterTop:r*1.86,diameterBottom:r*2.18,height:5,tessellation:18},scene); rock.position.set(x,0,0); rock.material=rockMat; rock.parent=root;
   const top=BABYLON.MeshBuilder.CreateCylinder(name+"-top",{diameter:r*1.82,height:.65,tessellation:18},scene); top.position.set(x,2.7,0); top.material=grassMat; top.parent=root;
   for(let i=0;i<12;i++){const a=i/12*Math.PI*2+seed, rr=r*(.35+((i*37+seed*100)%41)/100); const trunk=BABYLON.MeshBuilder.CreateCylinder(name+"-tree-"+i,{height:2.8,diameterTop:.1,diameterBottom:.35,tessellation:6},scene); trunk.position.set(x+Math.cos(a)*rr,4.15,Math.sin(a)*rr); trunk.material=darkMat; trunk.parent=root; const crown=BABYLON.MeshBuilder.CreateCylinder(name+"-crown-"+i,{height:3.5,diameterTop:.1,diameterBottom:2.2,tessellation:8},scene); crown.position.set(trunk.position.x,6.5,trunk.position.z); crown.material=grassMat; crown.parent=root;}
+  drawIslandGrid(name,x,0,r);
 }
 island("launch-island",-53,25,.2); island("target-island",53,30,1.1);
 
-const launchOrigin=new BABYLON.Vector3(-55,7.2,2), targetPoint=new BABYLON.Vector3(55,4.8,-1), samOrigin=new BABYLON.Vector3(47,6,10);
-const pdA=new BABYLON.Vector3(59,5.4,8), pdB=new BABYLON.Vector3(60,5.4,-8);
+const siloFP:GridFootprint={gx:-15,gz:0,width:2,depth:2};
+const commandFP:GridFootprint={gx:13,gz:-1,width:2,depth:2};
+const samFP:GridFootprint={gx:11,gz:2,width:2,depth:2};
+const radarFP:GridFootprint={gx:15,gz:-1,width:2,depth:2};
+const pdAFP:GridFootprint={gx:15,gz:2,width:2,depth:2};
+const pdBFP:GridFootprint={gx:15,gz:-4,width:2,depth:2};
+const siloCenter=footprintCenter(siloFP,0), commandCenter=footprintCenter(commandFP,0), samCenter=footprintCenter(samFP,0), radarCenter=footprintCenter(radarFP,0), pdACenter=footprintCenter(pdAFP,0), pdBCenter=footprintCenter(pdBFP,0);
+const launchOrigin=new BABYLON.Vector3(siloCenter.x,7.2,siloCenter.z), targetPoint=new BABYLON.Vector3(commandCenter.x,4.8,commandCenter.z), samOrigin=new BABYLON.Vector3(samCenter.x,6,samCenter.z);
+const pdA=new BABYLON.Vector3(pdACenter.x,5.4,pdACenter.z), pdB=new BABYLON.Vector3(pdBCenter.x,5.4,pdBCenter.z);
 
-const silo=BABYLON.MeshBuilder.CreateCylinder("silo",{diameter:8,height:2.4,tessellation:20},scene); silo.position.set(-55,4.1,2); silo.material=metalMat;
-const door=BABYLON.MeshBuilder.CreateCylinder("silo-door",{diameter:5.3,height:.35,tessellation:20},scene); door.position.set(-55,5.45,2); door.material=glowMat;
-for(let i=0;i<4;i++){const b=BABYLON.MeshBuilder.CreateBox("launch-building-"+i,{width:6+i,height:3.2+i*.2,depth:5.5},scene); b.position.set(-68+(i%2)*15,4.7,-10+Math.floor(i/2)*19); b.material=darkMat;}
-for(let i=0;i<6;i++){const b=BABYLON.MeshBuilder.CreateBox("target-building-"+i,{width:7+(i%3)*1.4,height:4+(i%2)*2.5,depth:6.5},scene); b.position.set(45+(i%3)*9,5.8,-8+Math.floor(i/3)*15); b.material=i===1?glowMat:metalMat;}
-const mast=BABYLON.MeshBuilder.CreateCylinder("radar-mast",{height:9,diameter:.7,tessellation:8},scene); mast.position.set(63,8.2,1); mast.material=darkMat;
-const dish=BABYLON.MeshBuilder.CreateTorus("radar-dish",{diameter:6,thickness:.7,tessellation:24},scene); dish.position.set(63,13,1); dish.rotation.x=Math.PI/2.7; dish.material=radarMat;
-const samBase=BABYLON.MeshBuilder.CreateBox("sam-base",{width:6,height:1.5,depth:5},scene); samBase.position.set(47,3.9,10); samBase.material=darkMat;
-for(let i=0;i<4;i++){const tube=BABYLON.MeshBuilder.CreateCylinder("sam-tube-"+i,{height:4.5,diameter:.55,tessellation:10},scene); tube.position.set(45.6+i*.9,6.1,10); tube.rotation.z=-.35; tube.material=metalMat;}
-for(const [i,p] of [pdA,pdB].entries()){const base=BABYLON.MeshBuilder.CreateCylinder("pd-base-"+i,{diameter:4,height:1.3,tessellation:16},scene); base.position.set(p.x,4,p.z); base.material=darkMat; const barrel=BABYLON.MeshBuilder.CreateCylinder("pd-barrel-"+i,{height:3.5,diameter:.45,tessellation:8},scene); barrel.position.set(p.x,6.2,p.z); barrel.rotation.z=Math.PI/2; barrel.material=metalMat;}
+foundation("silo",siloFP);reserveGrid("silo",siloFP);
+const silo=BABYLON.MeshBuilder.CreateCylinder("silo",{diameter:7.35,height:2.4,tessellation:20},scene); silo.position.set(siloCenter.x,BUILD_BASE_Y+1.2,siloCenter.z); silo.material=metalMat;
+const door=BABYLON.MeshBuilder.CreateCylinder("silo-door",{diameter:5.3,height:.35,tessellation:20},scene); door.position.set(siloCenter.x,BUILD_BASE_Y+2.575,siloCenter.z); door.material=glowMat;
+
+const launchBuildings:GridFootprint[]=[
+  {gx:-18,gz:-4,width:2,depth:2},{gx:-14,gz:-4,width:2,depth:2},
+  {gx:-18,gz:2,width:2,depth:2},{gx:-14,gz:2,width:2,depth:2}
+];
+launchBuildings.forEach((fp,i)=>gridBuilding("launch-building-"+i,fp,3.4+i*.45,darkMat));
+
+const targetBuildings:GridFootprint[]=[
+  {gx:10,gz:-3,width:2,depth:2},{gx:12,gz:-3,width:2,depth:2},{gx:14,gz:-3,width:2,depth:2},
+  {gx:10,gz:1,width:2,depth:2},{gx:12,gz:1,width:2,depth:2},{gx:14,gz:1,width:2,depth:2}
+];
+targetBuildings.forEach((fp,i)=>gridBuilding("target-building-"+i,fp,4+(i%2)*2.2,i===1?glowMat:metalMat));
+const commandCore=gridBuilding("command-core",commandFP,6.5,glowMat);commandCore.scaling.x=.92;commandCore.scaling.z=.92;
+
+foundation("radar",radarFP);reserveGrid("radar",radarFP);
+const mast=BABYLON.MeshBuilder.CreateCylinder("radar-mast",{height:9,diameter:.7,tessellation:8},scene); mast.position.set(radarCenter.x,BUILD_BASE_Y+4.5,radarCenter.z); mast.material=darkMat;
+const dish=BABYLON.MeshBuilder.CreateTorus("radar-dish",{diameter:6,thickness:.7,tessellation:24},scene); dish.position.set(radarCenter.x,BUILD_BASE_Y+9.3,radarCenter.z); dish.rotation.x=Math.PI/2.7; dish.material=radarMat;
+
+foundation("sam",samFP);reserveGrid("sam",samFP);
+const samBase=BABYLON.MeshBuilder.CreateBox("sam-base",{width:7.3,height:1.5,depth:7.3},scene); samBase.position.set(samCenter.x,BUILD_BASE_Y+.75,samCenter.z); samBase.material=darkMat;
+for(let i=0;i<4;i++){const tube=BABYLON.MeshBuilder.CreateCylinder("sam-tube-"+i,{height:4.5,diameter:.55,tessellation:10},scene); tube.position.set(samCenter.x-1.35+i*.9,BUILD_BASE_Y+2.95,samCenter.z); tube.rotation.z=-.35; tube.material=metalMat;}
+for(const [i,fp,p] of [[0,pdAFP,pdA],[1,pdBFP,pdB]] as [number,GridFootprint,BABYLON.Vector3][]){foundation("pd-"+i,fp);reserveGrid("pd-"+i,fp);const base=BABYLON.MeshBuilder.CreateCylinder("pd-base-"+i,{diameter:4,height:1.3,tessellation:16},scene); base.position.set(p.x,BUILD_BASE_Y+.65,p.z); base.material=darkMat; const barrel=BABYLON.MeshBuilder.CreateCylinder("pd-barrel-"+i,{height:3.5,diameter:.45,tessellation:8},scene); barrel.position.set(p.x,BUILD_BASE_Y+3,p.z); barrel.rotation.z=Math.PI/2; barrel.material=metalMat;}
 
 const previewPts:BABYLON.Vector3[]=[]; for(let i=0;i<=50;i++){const t=i/50,p=BABYLON.Vector3.Lerp(launchOrigin,targetPoint,t);p.y+=38*4*t*(1-t);previewPts.push(p);} const preview=BABYLON.MeshBuilder.CreateDashedLines("trajectory-preview",{points:previewPts,dashSize:2,gapSize:1,dashNb:36},scene); preview.color.set(.22,.55,.72); preview.alpha=.26; preview.isPickable=false;
 
@@ -92,8 +145,8 @@ $("reloadBtn").addEventListener("click",()=>{samAmmo=4;log("SAM battery reloaded
 samToggle.addEventListener("change",()=>log(`Long-range SAM ${samToggle.checked?"ONLINE":"OFFLINE"}.`)); pdToggle.addEventListener("change",()=>log(`Point defense ${pdToggle.checked?"ONLINE":"OFFLINE"}.`));
 $("overviewBtn").addEventListener("click",()=>{camera.setTarget(new BABYLON.Vector3(0,8,0));camera.radius=165;camera.alpha=-Math.PI/2;camera.beta=1.12;});
 $("targetBtn").addEventListener("click",()=>{camera.setTarget(new BABYLON.Vector3(53,6,0));camera.radius=62;camera.alpha=-2.1;camera.beta=1;});
-$("launcherBtn").addEventListener("click",()=>{camera.setTarget(new BABYLON.Vector3(-55,6,0));camera.radius=58;camera.alpha=-.9;camera.beta=1;});
+$("launcherBtn").addEventListener("click",()=>{camera.setTarget(new BABYLON.Vector3(-53,6,0));camera.radius=58;camera.alpha=-.9;camera.beta=1;});
 
-log("Missile Tek sandbox initialized. Defense grid online.");hud();
+log(`Missile Tek sandbox initialized. ${gridOccupancy.size} grid cells occupied.`);hud();
 engine.runRenderLoop(()=>{const now=performance.now()/1000,dt=Math.min(.05,now-lastFrame);lastFrame=now;elapsed+=dt;dish.rotation.y+=dt*.8;updateMissiles(dt);updateInterceptors(dt);hud();scene.render();});
 window.addEventListener("resize",()=>engine.resize());
