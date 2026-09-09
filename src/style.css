@@ -1,0 +1,67 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #e8edf2;
+  background: #0a1016;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; background: radial-gradient(circle at top, #162433 0, #0a1016 48%, #070b10 100%); }
+button, select, input { font: inherit; }
+button { cursor: pointer; }
+
+#app { min-height: 100vh; padding: 18px; }
+.topbar { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin: 0 auto 14px; max-width: 1500px; }
+.eyebrow { font-size: 11px; letter-spacing: .24em; color: #7e91a3; font-weight: 800; }
+h1 { margin: 2px 0 0; font-size: clamp(20px, 2vw, 29px); letter-spacing: -.02em; }
+h1 span { color: #6f8294; font-size: .55em; font-weight: 650; }
+.status { border: 1px solid #334453; background: #101922; padding: 9px 12px; border-radius: 5px; font-size: 12px; letter-spacing: .08em; font-weight: 800; color: #9fc6a5; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 14px; max-width: 1500px; margin: 0 auto; align-items: start; }
+.viewport-shell { position: relative; overflow: hidden; min-height: 650px; border: 1px solid #273542; background: #08111a; border-radius: 8px; }
+#renderCanvas { width: 100%; height: 650px; display: block; outline: none; touch-action: none; }
+.controls { display: flex; flex-direction: column; gap: 10px; }
+.controls section { background: rgba(16, 25, 34, .92); border: 1px solid #273542; border-radius: 8px; padding: 13px; }
+.controls h2 { margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: #a8b6c2; }
+.controls label:not(.toggle) { display: block; font-size: 12px; color: #7f91a1; margin-bottom: 5px; }
+select { width: 100%; color: #e8edf2; background: #0b131b; border: 1px solid #354654; border-radius: 5px; padding: 9px; margin-bottom: 9px; }
+.button-stack { display: grid; gap: 7px; }
+button { border: 1px solid #596b7a; color: #f2f6f9; background: #294b64; padding: 10px 11px; border-radius: 5px; font-weight: 750; font-size: 12px; transition: .15s ease; }
+button:hover { filter: brightness(1.12); }
+button:active { transform: translateY(1px); }
+button.secondary { background: #121e28; border-color: #354654; color: #c4ced6; }
+.toggle { display: flex; gap: 9px; align-items: center; font-size: 13px; padding: 6px 0; }
+.toggle input { width: 17px; height: 17px; }
+.camera-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.controls p { margin: 9px 0 0; color: #6f8291; line-height: 1.45; font-size: 11px; }
+.event-panel { min-height: 184px; }
+#combatLog { max-height: 210px; overflow: auto; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; line-height: 1.55; color: #98a9b7; }
+.log-row { border-top: 1px solid #202e39; padding: 4px 0; }
+.log-row:first-child { border-top: 0; }
+.log-time { color: #62798b; margin-right: 6px; }
+
+.hud { position: absolute; top: 12px; background: rgba(4, 10, 15, .76); border: 1px solid rgba(94, 118, 136, .4); padding: 9px 10px; border-radius: 5px; backdrop-filter: blur(3px); font-size: 11px; pointer-events: none; }
+.hud-left { left: 12px; width: 180px; }
+.hud-right { right: 12px; min-width: 126px; line-height: 1.75; }
+.hud-label { color: #788d9c; letter-spacing: .08em; font-size: 9px; font-weight: 800; }
+.healthbar { height: 6px; background: #26333d; margin: 5px 0 4px; overflow: hidden; }
+#healthFill { height: 100%; width: 100%; background: #73a779; transition: width .2s ease; }
+#healthText { color: #bdc9d1; font-family: ui-monospace, monospace; font-size: 10px; }
+.warning { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); color: #ffd8bd; background: rgba(86, 32, 18, .86); border: 1px solid #a74f31; border-radius: 4px; padding: 7px 13px; font-size: 11px; font-weight: 900; letter-spacing: .16em; opacity: 0; transition: opacity .15s ease; pointer-events: none; }
+.warning.show { opacity: 1; }
+
+@media (max-width: 980px) {
+  .layout { grid-template-columns: 1fr; }
+  .controls { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .event-panel { grid-column: span 2; }
+  .viewport-shell { min-height: 520px; }
+  #renderCanvas { height: 520px; }
+}
+@media (max-width: 620px) {
+  #app { padding: 8px; }
+  .topbar { align-items: start; flex-direction: column; }
+  .controls { grid-template-columns: 1fr; }
+  .event-panel { grid-column: auto; }
+  .viewport-shell { min-height: 420px; }
+  #renderCanvas { height: 420px; }
+}
