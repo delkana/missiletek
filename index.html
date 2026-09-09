@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Missile Tek — Missile Combat Sandbox v0.1</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">MISSILE TEK</div>
+          <h1>Missile Combat Sandbox <span>v0.1</span></h1>
+        </div>
+        <div class="status" id="status">DEFENSE GRID ONLINE</div>
+      </header>
+
+      <main class="layout">
+        <section class="viewport-shell">
+          <canvas id="renderCanvas" aria-label="3D missile combat sandbox"></canvas>
+          <div class="hud hud-left">
+            <div class="hud-label">TARGET BASE</div>
+            <div class="healthbar"><div id="healthFill"></div></div>
+            <div id="healthText">1000 / 1000</div>
+          </div>
+          <div class="hud hud-right">
+            <div><span class="hud-label">SAM READY</span> <strong id="samAmmo">4</strong></div>
+            <div><span class="hud-label">PD</span> <strong id="pdState">ONLINE</strong></div>
+            <div><span class="hud-label">TRACKS</span> <strong id="trackCount">0</strong></div>
+          </div>
+          <div class="warning" id="warning">INCOMING</div>
+        </section>
+
+        <aside class="controls">
+          <section>
+            <h2>Strike Control</h2>
+            <label for="trajectory">Trajectory</label>
+            <select id="trajectory">
+              <option value="standard">Standard ballistic</option>
+              <option value="high">High arc</option>
+              <option value="depressed">Depressed</option>
+            </select>
+            <div class="button-stack">
+              <button id="singleBtn">Launch missile</button>
+              <button id="salvoBtn">Launch 6-missile saturation salvo</button>
+              <button id="decoyBtn">Launch decoy penetration package</button>
+            </div>
+          </section>
+
+          <section>
+            <h2>Defense Grid</h2>
+            <label class="toggle"><input type="checkbox" id="samToggle" checked /> Long-range SAM</label>
+            <label class="toggle"><input type="checkbox" id="pdToggle" checked /> Point defense</label>
+            <button id="reloadBtn" class="secondary">Reload SAM battery</button>
+          </section>
+
+          <section>
+            <h2>Camera</h2>
+            <div class="camera-grid">
+              <button id="overviewBtn" class="secondary">Overview</button>
+              <button id="targetBtn" class="secondary">Target base</button>
+              <button id="launcherBtn" class="secondary">Launcher</button>
+            </div>
+            <p>Mouse: drag to orbit · wheel to zoom · right-drag to pan</p>
+          </section>
+
+          <section class="event-panel">
+            <h2>Combat Log</h2>
+            <div id="combatLog" aria-live="polite"></div>
+          </section>
+        </aside>
+      </main>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
